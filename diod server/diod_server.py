@@ -25,14 +25,13 @@ def main():
     print(f"Server listening on {SERVER_IP}:{SERVER_PORT}")
 
     # List of sockets to be monitored for incoming connections
-    inputs = [server_socket]
-    outputs = []
-    message_queues = {}
-    file_handles = {}
+    client_app_socket_list = [server_socket]
 
-    while inputs:
+    file_name_list = {}
+
+    while client_app_socket_list:
         # Use select to wait for I/O events
-        readable, writable, exceptional = select.select(inputs, outputs, inputs)
+        readable, _, exceptional = select.select(client_app_socket_list, [], client_app_socket_list)
 
         for vm_soket in readable:
             if vm_soket is server_socket:
@@ -40,37 +39,33 @@ def main():
                 client_socket, client_address = vm_soket.accept()
                 print(f"Connected by {client_address}")
                 client_socket.setblocking(0)
-                inputs.append(client_socket)
+                client_app_socket_list.append(client_socket)
                 file_path = os.path.join(SAVE_DIRECTORY, f"received_file_{client_address[0]}_{client_address[1]}.py")
-                file_handles[client_socket] = file_path
-                message_queues[client_socket] = b""
+                file_name_list[client_socket] = file_path
+
             else:
                 # Read from a client socket
                 data = vm_soket.recv(BUFFER_SIZE)
                 if data:
-                    save_file_chunk(file_handles[vm_soket], data)
+                    save_file_chunk(file_name_list[vm_soket], data)
                 else:
                     # Interpret empty result as closed connection
                     print(f"Closing connection to {vm_soket.getpeername()}")
-                    inputs.remove(vm_soket)
-                    if vm_soket in outputs:
-                        outputs.remove(vm_soket)
+                    client_app_socket_list.remove(vm_soket)
                     vm_soket.close()
-                    file_path = file_handles.pop(vm_soket)
-                    message_queues.pop(vm_soket, None)
+                    file_path = file_name_list.pop(vm_soket)
+
                     print(f"Saved file: {file_path}")
 
         for vm_soket in exceptional:
             # Handle exceptional conditions
             print(f"Handling exceptional condition for {vm_soket.getpeername()}")
-            inputs.remove(vm_soket)
-            if vm_soket in outputs:
-                outputs.remove(vm_soket)
+            client_app_socket_list.remove(vm_soket)
             vm_soket.close()
-            file_path = file_handles.pop(vm_soket, None)
+            file_path = file_name_list.pop(vm_soket, None)
             if file_path:
                 print(f"Saved file: {file_path}")
-            message_queues.pop(vm_soket, None)
+
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
-import time
-import shutil
 import os
-import stat
+import time
 from datetime import datetime, timedelta
 
-from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
+from settings import save_file_name
 
 
 def copy_file(src, dst, buffer_size=1024 * 1024):
@@ -15,6 +15,8 @@ def copy_file(src, dst, buffer_size=1024 * 1024):
             if not buf:
                 break
             dst_file.write(buf)
+    _, file = os.path.split(dst)
+    save_file_name(file)
 
 
 def rename_file(src_path):
@@ -75,9 +77,9 @@ class MyHandler(FileSystemEventHandler):
                 print(f'Moved: {src_path} to {dst_path}')
 
 
-if __name__ == "__main__":
-    src_dir = "src"  # Replace with the source directory path
-    dst_dir = "dst"  # Replace with the destination directory path
+def main():
+    src_dir = "uploads"  # Replace with the source directory path
+    dst_dir = "../mnt/data"  # Replace with the destination directory path
 
     event_handler = MyHandler(src_dir, dst_dir)
     observer = Observer()
@@ -90,3 +92,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
+
+
+main()

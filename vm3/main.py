@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 from random import choice
 from time import sleep
 
-from vm1 import *
+from constants import *
+from vm1.settings import save_files_state
 
 
 def get_file_info(directory):
@@ -18,28 +19,6 @@ def get_file_info(directory):
         total_size += sum(os.path.getsize(os.path.join(dirpath, file)) for file in filenames)
 
     return total_files, total_size
-
-
-def broadcast_file_info(file_info, targets):
-    data = {
-        PC: {
-            "files": file_info[0],
-            "size": file_info[1],
-        }
-    }
-    data = json.dumps(data)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    for ip, port in targets:
-        if ip != HOST or port != PORT:
-            sock.sendto(data.encode(), (ip, port))
-
-    sock.close()
-
-
-def save_state_to_json(json_data):
-    with open(STATE_FILE, 'w') as json_file:
-        json.dump(json_data, json_file, indent=4)
 
 
 def receive_broadcast(host, port):
@@ -58,16 +37,30 @@ def receive_broadcast(host, port):
             break
         else:
 
-            client_apps.update(data)
-            save_state_to_json(client_apps)
+            # client_apps.update(data)
+            save_files_state(data)
             for vm, value in data.items():
                 print(f"Received from {vm}: Total files: {value['files']}, Total size: {value['size']} bytes")
 
 
-def broadcast():
+def broadcast_file_info():
     while True:
         file_info = get_file_info(DIRECTORY)
-        broadcast_file_info(file_info, TARGETS)
+
+        data = {
+            PC: {
+                "files": file_info[0],
+                "size": file_info[1],
+            }
+        }
+        data = json.dumps(data)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        for ip, port in TARGETS:
+            if ip != HOST or port != PORT:
+                sock.sendto(data.encode(), (ip, port))
+
+        sock.close()
         time.sleep(10)  # Broadcast every 10 seconds
 
 
@@ -129,7 +122,6 @@ def send_files_or_pass_token():
         if I_HAVE_TOKEN:
             send_files()
         if pass_token():
-
             break
 
         # simulate copying
@@ -137,13 +129,11 @@ def send_files_or_pass_token():
 
 
 if __name__ == "__main__":
-
     # Start broadcasting in a separate thread
-    broadcast_thread = threading.Thread(target=broadcast)
+    broadcast_thread = threading.Thread(target=broadcast_file_info)
     broadcast_thread.start()
     # send file
     send_file_thread = threading.Thread(target=send_files_or_pass_token())
     send_file_thread.start()
     # Start receiving in the main thread
     receive_broadcast(HOST, PORT)
-
