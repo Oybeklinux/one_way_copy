@@ -9,8 +9,7 @@ def json_edit(callback):
                 settings = json.load(file)
             except:
                 settings = {}
-        print("Args:", arg)
-        print("Settings:", settings)
+
 
         callback(arg, settings)
 
@@ -34,3 +33,7 @@ def save_files_state(state: dict, data: dict = None):
     if isinstance(data, dict):
         data.update(state)
 
+
+def get_state():
+    with open(STATE_FILE, 'r') as file:
+        return json.load(file)

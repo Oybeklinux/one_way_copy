@@ -1,12 +1,10 @@
 {
   "TIME_THRESHOLD": 10,
-  "TOKEN_MESSAGE": "TOKEN",
-  "I_HAVE_TOKEN": false,
   "THIS_VM": "VM2",
   "VM_LIST": {
-    "VM1": ["localhost", 44444],
+    "VM1": ["localhost", 11111],
     "VM2": ["localhost", 22222],
     "VM3": ["localhost", 33333]
   },
-  "DIRECTORY": "dst"
+  "DIRECTORY": "../mnt/data"
 }

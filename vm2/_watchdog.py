@@ -6,6 +6,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from settings import save_file_name
+from vm1.constants import DIRECTORY
 
 
 def copy_file(src, dst, buffer_size=1024 * 1024):
@@ -77,9 +78,9 @@ class MyHandler(FileSystemEventHandler):
                 print(f'Moved: {src_path} to {dst_path}')
 
 
-def main():
+def watch_files():
     src_dir = "uploads"  # Replace with the source directory path
-    dst_dir = "../mnt/data"  # Replace with the destination directory path
+    dst_dir = DIRECTORY  # Replace with the destination directory path
 
     event_handler = MyHandler(src_dir, dst_dir)
     observer = Observer()
@@ -88,10 +89,11 @@ def main():
 
     try:
         while True:
-            time.sleep(1)
+            print("+++watch_files+++++")
+            time.sleep(2)
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
 
 
-main()
+
