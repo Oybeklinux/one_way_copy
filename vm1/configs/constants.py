@@ -29,3 +29,8 @@ TOKEN_STATUS = settings['TOKEN_STATUS']
 # VM files state
 STATE_FILE = "configs/state.json"
 client_apps = settings['VMLIST']
+TOKEN_TYPE_SEND = 1
+TOKEN_TYPE_ACCEPT = 2
+TOKEN_STATUS_SEND = 1
+TOKEN_STATUS_TOKEN_PASS = 2
+TOKEN_STATUS_IDLE = 3

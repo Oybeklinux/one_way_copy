@@ -6,13 +6,15 @@ from datetime import datetime, timedelta
 from random import choice
 from time import sleep
 import json
-from vm1.configs.constants import config, TARGETS, HOST, PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, TIME_THRESHOLD, client_apps
+from configs.constants import config, TARGETS, HOST, PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, TIME_THRESHOLD, client_apps
+from configs.constants import TOKEN_TYPE_SEND, TOKEN_TYPE_ACCEPT,TOKEN_STATUS_SEND,TOKEN_STATUS_TOKEN_PASS,TOKEN_STATUS_IDLE
 
-from vm1.modules.settings import save_files_state
-from vm1.modules.settings import get_state
-from vm1.configs.constants import settings
-from vm1.modules.settings import save_token_status
-from vm1.configs.log import get_logger
+
+from modules.settings import save_files_state
+from modules.settings import get_state
+from configs.constants import settings
+from modules.settings import save_token_status
+from configs.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -24,11 +26,7 @@ IDLE - wait
 
 TOKEN = ''
 TOKEN_STATUS = settings['TOKEN_STATUS']
-TOKEN_TYPE_SEND = 1
-TOKEN_TYPE_ACCEPT = 2
-TOKEN_STATUS_SEND = 1
-TOKEN_STATUS_TOKEN_PASS = 2
-TOKEN_STATUS_IDLE = 3
+
 
 
 def get_file_info(directory):
@@ -145,7 +143,7 @@ def send_accept_token(address):
         token = {"TOKEN": TOKEN, "TYPE": TOKEN_TYPE_ACCEPT, "SENDER": config["VM_LIST"][PC]}
         token = json.dumps(token)
         s.sendto(token.encode(), address)
-    logger.info(f"Waiting for accept token from {address[0]}:{address[1]} ")
+    logger.info(f"Accept token was sent to {address[0]}:{address[1]} ")
 
 
 def pass_token():
