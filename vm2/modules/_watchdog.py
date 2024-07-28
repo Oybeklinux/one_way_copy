@@ -5,9 +5,11 @@ from datetime import datetime, timedelta
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from settings import save_file_name
-from vm1.constants import DIRECTORY
+from vm1.modules.settings import save_file_name
+from vm1.configs.constants import DIRECTORY
+from vm1.configs.log import get_logger
 
+logger = get_logger(__name__)
 
 def copy_file(src, dst, buffer_size=1024 * 1024):
     with open(src, 'rb') as src_file, open(dst, 'wb') as dst_file:
@@ -60,7 +62,7 @@ class MyHandler(FileSystemEventHandler):
 
             if os.path.exists(event.src_path):
                 copy_file(event.src_path, dst_path)
-                print(f'Copied: {event.src_path} to {dst_path}')
+                logger.info(f'Copied: {event.src_path} to {dst_path}')
 
     def on_created(self, event):
         self.process(event)
@@ -75,11 +77,11 @@ class MyHandler(FileSystemEventHandler):
 
             if os.path.exists(src_path):
                 copy_file(src_path, dst_path)
-                print(f'Moved: {src_path} to {dst_path}')
+                logger.info(f'Moved: {src_path} to {dst_path}')
 
 
 def watch_files():
-    src_dir = "uploads"  # Replace with the source directory path
+    src_dir = "../uploads"  # Replace with the source directory path
     dst_dir = DIRECTORY  # Replace with the destination directory path
 
     event_handler = MyHandler(src_dir, dst_dir)
@@ -89,7 +91,6 @@ def watch_files():
 
     try:
         while True:
-            print("+++watch_files+++++")
             time.sleep(2)
     except KeyboardInterrupt:
         observer.stop()

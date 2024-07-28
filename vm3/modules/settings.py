@@ -1,4 +1,4 @@
-from constants import STATE_FILE
+from configs.constants import STATE_FILE
 import json
 
 
@@ -30,7 +30,12 @@ def save_file_name(file_name: str, data: dict = None):
 @json_edit
 def save_files_state(state: dict, data: dict = None):
     if isinstance(data, dict):
-        data.update(state)
+        data['VMLIST'].update(state)
+
+
+@json_edit
+def save_token_status(status: int, data: dict = None):
+    data.update({"TOKEN_STATUS": status})
 
 
 def get_state():

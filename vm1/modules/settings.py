@@ -1,4 +1,4 @@
-from constants import STATE_FILE
+from configs.constants import STATE_FILE
 import json
 
 

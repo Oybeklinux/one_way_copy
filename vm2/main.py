@@ -6,14 +6,15 @@ from datetime import datetime, timedelta
 from random import choice
 from time import sleep
 import json
-from constants import config, TARGETS, HOST, PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, TIME_THRESHOLD, client_apps
+from vm1.configs.constants import config, TARGETS, HOST, PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, TIME_THRESHOLD, client_apps
 
-from settings import save_files_state
-from _watchdog import watch_files
-from settings import get_state
-from constants import settings
-from vm1.settings import save_token_status
-import logging
+from vm1.modules.settings import save_files_state
+from vm1.modules.settings import get_state
+from vm1.configs.constants import settings
+from vm1.modules.settings import save_token_status
+from vm1.configs.log import get_logger
+
+logger = get_logger(__name__)
 
 """
 SEND - send file
@@ -29,26 +30,6 @@ TOKEN_STATUS_SEND = 1
 TOKEN_STATUS_TOKEN_PASS = 2
 TOKEN_STATUS_IDLE = 3
 
-# Setup logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# Create file handler
-file_handler = logging.FileHandler('app.log')
-file_handler.setLevel(logging.WARNING)
-
-# Create console handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-
-# Create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-# Add the handlers to the logger
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
 
 def get_file_info(directory):
     total_files = 0
@@ -113,7 +94,7 @@ def broadcast_file_info():
 
 
 # Function to send a file to server A via TCP
-def send_file_to_server_a(file_path):
+def send_file_to_server(file_path):
     with open(file_path, 'rb') as file:
         data = file.read()
 
@@ -138,7 +119,7 @@ def send_files():
                 logger.info(f"Deleted old file: {filename}")
             else:
                 try:
-                    send_file_to_server_a(file_path)
+                    send_file_to_server(file_path)
                     logger.info(f"Sent file to server A: {filename}")
                 except Exception as e:
                     logger.warning(f"Failed to send file {filename} to server A: {e}")

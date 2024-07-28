@@ -2,12 +2,12 @@ import json
 
 
 def get_config():
-    with open('config.json', 'r') as file:
+    with open('configs/config.json', 'r') as file:
         return json.load(file)
 
 
 def get_settings():
-    with open('state.json', 'r') as file:
+    with open('configs/state.json', 'r') as file:
         return json.load(file)
 
 
@@ -27,5 +27,5 @@ TOKEN = ''
 TOKEN_STATUS = settings['TOKEN_STATUS']
 
 # VM files state
-STATE_FILE = "state.json"
+STATE_FILE = "configs/state.json"
 client_apps = settings['VMLIST']
