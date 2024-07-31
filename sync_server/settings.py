@@ -1,4 +1,4 @@
-from configs.constants import STATE_FILE
+from constants import STATE_FILE
 import json
 
 
@@ -25,6 +25,13 @@ def save_file_name(file_name: str, data: dict = None):
         if 'send_files' not in data:
             data['send_files'] = []
         data['send_files'].append(file_name)
+
+
+@json_edit
+def remove_file_name(file_name: str, data: dict = None):
+    if isinstance(data, dict):
+        if 'send_files' in data and file_name in data['send_files']:
+            data['send_files'].remove(file_name)
 
 
 @json_edit

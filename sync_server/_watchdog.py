@@ -5,11 +5,12 @@ from datetime import datetime, timedelta
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from vm1.modules.settings import save_file_name
-from vm1.configs.constants import DIRECTORY
-from vm1.configs.log import get_logger
+from vm1.settings import save_file_name
+from vm1.constants import DIRECTORY
+from vm1.log import get_logger
 
 logger = get_logger(__name__)
+
 
 def copy_file(src, dst, buffer_size=1024 * 1024):
     with open(src, 'rb') as src_file, open(dst, 'wb') as dst_file:
@@ -54,6 +55,7 @@ class MyHandler(FileSystemEventHandler):
         if not event.is_directory:
             # src_path = event.src_path
             # If the event is a move event, the destination path is event.dest_path
+
             dst_path = os.path.join(self.dst_dir, os.path.relpath(event.src_path, self.src_dir))
             dst_path = rename_file(dst_path)
 
@@ -81,12 +83,13 @@ class MyHandler(FileSystemEventHandler):
 
 
 def watch_files():
-    src_dir = "../uploads"  # Replace with the source directory path
+    src_dir = "uploads"  # Replace with the source directory path
     dst_dir = DIRECTORY  # Replace with the destination directory path
 
     event_handler = MyHandler(src_dir, dst_dir)
     observer = Observer()
     observer.schedule(event_handler, src_dir, recursive=True)
+    print(os.path.curdir, src_dir, dst_dir)
     observer.start()
 
     try:
@@ -96,5 +99,5 @@ def watch_files():
         observer.stop()
     observer.join()
 
-
-
+if __name__ == "__main__":
+    watch_files()

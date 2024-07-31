@@ -6,27 +6,22 @@ from datetime import datetime, timedelta
 from random import choice
 from time import sleep
 import json
-from configs.constants import config, TARGETS, HOST, PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, TIME_THRESHOLD, client_apps
-from configs.constants import TOKEN_TYPE_SEND, TOKEN_TYPE_ACCEPT,TOKEN_STATUS_SEND,TOKEN_STATUS_TOKEN_PASS,TOKEN_STATUS_IDLE
+from sync_server.constants import config, TARGETS, THIS_HOST, THIS_PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, TIME_THRESHOLD, \
+    client_apps
+from sync_server.constants import TOKEN_TYPE_SEND, TOKEN_TYPE_ACCEPT, TOKEN_STATUS_SEND, TOKEN_STATUS_TOKEN_PASS, \
+    TOKEN_STATUS_IDLE
 
-
-from modules.settings import save_files_state
-from modules.settings import get_state
-from configs.constants import settings
-from modules.settings import save_token_status
-from configs.log import get_logger
+from sync_server.settings import save_files_state, remove_file_name
+from sync_server.settings import get_state
+from sync_server.constants import settings
+from sync_server.settings import save_token_status
+from sync_server.log import get_logger
+from sync_server.sender import send_file
 
 logger = get_logger(__name__)
 
-"""
-SEND - send file
-SEND_TOKEN - send token
-IDLE - wait
-"""
-
 TOKEN = ''
 TOKEN_STATUS = settings['TOKEN_STATUS']
-
 
 
 def get_file_info(directory):
@@ -34,9 +29,13 @@ def get_file_info(directory):
     total_size = 0
     state = get_state()
     filenames = state['send_files']
+
     for filename in filenames:
-        total_size += os.path.getsize(os.path.join(os.path.abspath(directory), filename))
-    total_files += len(filenames)
+        try:
+            total_size += os.path.getsize(os.path.join(os.path.abspath(directory), filename))
+            total_files += 1
+        except FileNotFoundError:
+            continue
 
     return total_files, total_size
 
@@ -53,6 +52,7 @@ def receive_broadcast(host, port):
         if 'TOKEN' in data:
             sender_address = tuple(data["SENDER"])
             if data['TYPE'] == TOKEN_TYPE_SEND:
+                TOKEN = data['TOKEN']
                 TOKEN = data['TOKEN']
                 TOKEN_STATUS = TOKEN_STATUS_SEND
                 save_token_status(TOKEN_STATUS)
@@ -83,8 +83,8 @@ def broadcast_file_info():
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         for ip, port in TARGETS:
-            if ip != HOST or port != PORT:
-                logger.info(f"Sending to ... {ip} {port}")
+            if ip != THIS_HOST or port != THIS_PORT:
+                logger.info(f"Sending file info to ... {ip} {port}")
                 sock.sendto(data.encode(), (ip, port))
 
         sock.close()
@@ -92,19 +92,15 @@ def broadcast_file_info():
 
 
 # Function to send a file to server A via TCP
-def send_file_to_server(file_path):
-    with open(file_path, 'rb') as file:
-        data = file.read()
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((SERVER_IP, SERVER_PORT))
-        s.send(data)
 
 
 def send_files():
     for dirpath, dirnames, filenames in os.walk(DIRECTORY):
 
         for filename in filenames:
+            # continue if file belongs to another VM
+            if filename not in settings['send_files']:
+                continue
             try:
                 file, ext = filename.split(".")
                 file_time = datetime.strptime(file, '%Y-%m-%d-%H-%M-%S')
@@ -114,13 +110,14 @@ def send_files():
             file_path = os.path.join(DIRECTORY, filename)
             if (datetime.utcnow() - file_time) > timedelta(minutes=TIME_THRESHOLD):
                 os.remove(file_path)
+                remove_file_name(filename)
                 logger.info(f"Deleted old file: {filename}")
             else:
                 try:
-                    send_file_to_server(file_path)
+                    send_file(file_path, SERVER_IP, SERVER_PORT)
                     logger.info(f"Sent file to server A: {filename}")
                 except Exception as e:
-                    logger.warning(f"Failed to send file {filename} to server A: {e}")
+                    logger.warning(f"Failed to send file {filename} to server: {e}")
                     return False
 
         return True
@@ -171,11 +168,11 @@ def send_files_or_pass_token():
             logger.info("Sending files")
             if not send_files():
                 logger.warning("Error during sending")
-            logger.info("Sending files finished")
+            else:
+                logger.info("Sending files finished")
+                TOKEN_STATUS = TOKEN_STATUS_TOKEN_PASS
+                save_token_status(TOKEN_STATUS)
             sleep(5)
-            TOKEN_STATUS = TOKEN_STATUS_TOKEN_PASS
-            save_token_status(TOKEN_STATUS)
-
         if TOKEN_STATUS == TOKEN_STATUS_TOKEN_PASS:
             logger.info("Sending token")
             if pass_token() is None:
@@ -195,26 +192,27 @@ def send_files_or_pass_token():
 if __name__ == "__main__":
     TOKEN = generate_token()
     # watchdog
-    # watch_files_thread = threading.Thread(target=watch_files)
+    # watch_files()
+    # watch_files_thread = threading.Thread(target=watch_files())
 
     # Start broadcasting in a separate thread
-    # broadcast_thread = threading.Thread(target=broadcast_file_info)
+    broadcast_thread = threading.Thread(target=broadcast_file_info)
 
     # send file
     send_file_thread = threading.Thread(target=send_files_or_pass_token)
 
     # receive file info and token
-    receive_thread = threading.Thread(target=receive_broadcast, args=(HOST, PORT))
+    receive_thread = threading.Thread(target=receive_broadcast, args=(THIS_HOST, THIS_PORT))
 
     # watch_files_thread.start()
-    # broadcast_thread.start()
+    broadcast_thread.start()
 
     receive_thread.start()
     send_file_thread.start()
 
     # Start receiving in the main thread
     # watch_files_thread.join()
-    # broadcast_thread.join()
+    broadcast_thread.join()
     receive_thread.join()
     send_file_thread.join()
 

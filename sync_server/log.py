@@ -7,7 +7,7 @@ def get_logger(module_name):
     logger.setLevel(logging.DEBUG)
 
     # Create handlers
-    file_handler = logging.FileHandler('../app.log')
+    file_handler = logging.FileHandler('sync_server/app.log')
     file_handler.setLevel(logging.DEBUG)
 
     console_handler = logging.StreamHandler()
