@@ -7,11 +7,11 @@ def get_logger(module_name):
     logger.setLevel(logging.DEBUG)
 
     # Create handlers
-    file_handler = logging.FileHandler('sync_server/app.log')
-    file_handler.setLevel(logging.DEBUG)
+    file_handler = logging.FileHandler('app.log')
+    file_handler.setLevel(logging.WARNING)
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(logging.INFO)
 
     # Create formatters and add them to the handlers
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

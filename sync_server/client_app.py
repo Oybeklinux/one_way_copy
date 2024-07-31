@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 from random import choice
 from time import sleep
 import json
-from sync_server.constants import config, TARGETS, THIS_HOST, THIS_PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, TIME_THRESHOLD, \
-    client_apps
+from sync_server.constants import config, TARGETS, THIS_HOST, THIS_PORT, SERVER_PORT, SERVER_IP, DIRECTORY, PC, \
+    TIME_THRESHOLD, \
+    client_apps, get_settings
 from sync_server.constants import TOKEN_TYPE_SEND, TOKEN_TYPE_ACCEPT, TOKEN_STATUS_SEND, TOKEN_STATUS_TOKEN_PASS, \
     TOKEN_STATUS_IDLE
 
@@ -95,11 +96,14 @@ def broadcast_file_info():
 
 
 def send_files():
+
     for dirpath, dirnames, filenames in os.walk(DIRECTORY):
+        print(f"Total {len(filenames)} files: {filenames}")
 
         for filename in filenames:
             # continue if file belongs to another VM
-            if filename not in settings['send_files']:
+            files_to_be_sent = get_settings('send_files')
+            if filename not in files_to_be_sent:
                 continue
             try:
                 file, ext = filename.split(".")
@@ -164,7 +168,7 @@ def send_files_or_pass_token():
     global TOKEN, TOKEN_STATUS
     while True:
         logger.info(f"TOKEN STATUS: {TOKEN_STATUS}")
-        if TOKEN_STATUS == TOKEN_STATUS_SEND:
+        if TOKEN_STATUS == TOKEN_STATUS_SEND or TOKEN_STATUS == TOKEN_STATUS_TOKEN_PASS:
             logger.info("Sending files")
             if not send_files():
                 logger.warning("Error during sending")
@@ -172,7 +176,7 @@ def send_files_or_pass_token():
                 logger.info("Sending files finished")
                 TOKEN_STATUS = TOKEN_STATUS_TOKEN_PASS
                 save_token_status(TOKEN_STATUS)
-            sleep(5)
+
         if TOKEN_STATUS == TOKEN_STATUS_TOKEN_PASS:
             logger.info("Sending token")
             if pass_token() is None:
@@ -180,13 +184,10 @@ def send_files_or_pass_token():
             logger.info(f"Sending token finished {datetime.now()}")
             # else:
             #     TOKEN_STATUS = TOKEN_STATUS_IDLE
-            sleep(2)  # resend token after this time
+            sleep(4)  # wait for the token to come back
 
         if TOKEN_STATUS == TOKEN_STATUS_IDLE:
             logger.info(f"Waiting for token {datetime.now()}")
-
-        # simulate copying
-        sleep(10)
 
 
 if __name__ == "__main__":

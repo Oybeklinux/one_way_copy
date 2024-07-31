@@ -5,6 +5,7 @@ import os
 import threading
 from datetime import datetime, timedelta
 
+from sync_server.constants import BEGIN_DATETIME
 from sync_server.log import get_logger
 
 logger = get_logger(__name__)
@@ -24,8 +25,27 @@ FILE_EXTENSIONS = {
     1: '.txt',
     2: '.jpg',
     3: '.png',
+    4: '.pdf',
+    5: '.mkv',
+    6: '.html',
+    7: ".db"
     # Add more file types as needed
 }
+
+
+def set_file_as_completed(offset_file, completed=True):
+    file_name = "complted_files.txt"
+
+    if not os.path.exists(file_name):
+        with open(file_name, 'x') as file:
+            json.dump({}, file)
+
+    with open(file_name, "r") as file:
+        cfiles = json.load(file)
+        cfiles[offset_file] = completed
+
+    with open(file_name, "w") as wfile:
+        json.dump(cfiles, wfile, indent=4)
 
 
 def create_empty_file(file_path, total_size):
@@ -34,15 +54,25 @@ def create_empty_file(file_path, total_size):
         f.write(b'\0')
 
 
-def handle_payload(ip, offset, file_type, total_chunks, chunk_index, chunk_hash, chunk_data, file_data):
-    folder_path = f"./resource/{ip}"
+def create_abs_path(file_name):
+    current_file_path = os.path.abspath(__file__)
+    current_dir_path = os.path.dirname(current_file_path)
+    return os.path.join(current_dir_path, file_name)
+
+
+def handle_payload(ip, offset, file_type, total_chunks, chunk_index, chunk_data):
+    folder_path = f"resource\\{ip}"
+    folder_path = create_abs_path(folder_path)
     os.makedirs(folder_path, exist_ok=True)
     file_extension = FILE_EXTENSIONS.get(file_type, '.bin')
-    file_path = os.path.join(folder_path, f"{offset}.{file_extension}")
+    offset = datetime.fromtimestamp(BEGIN_DATETIME.timestamp() + offset)
+    offset = offset.strftime("%Y-%m-%d-%H-%M-%S")
+    file_path = os.path.join(folder_path, offset + file_extension)
     bit_array_path = file_path + '.bitarray'
 
     if not os.path.exists(file_path):
         create_empty_file(file_path, total_chunks * CHUNK_SIZE)
+        set_file_as_completed(offset + file_extension, False)
         with open(bit_array_path, 'wb') as f:
             f.write(bytearray(BIT_ARRAY_SIZE))
 
@@ -58,60 +88,58 @@ def handle_payload(ip, offset, file_type, total_chunks, chunk_index, chunk_hash,
                 f.seek(0)
                 f.write(bit_array)
                 f.flush()
-                bit_array = bytearray(f.read())
-
+                # bit_array = bytearray(f.read())
+            logger.info(f"Chunk {chunk_index} received. File: {offset}")
             if all((bit_array[i // 8] & (1 << (i % 8))) for i in range(total_chunks)):
-                with open(file_path, 'rb') as file:
-                    complete_data = file.read()
-                    if hashlib.sha256(complete_data).digest() == chunk_hash:
-                        print(f"File {file_path} received completely and verified.")
-                        os.remove(bit_array_path)
-                    else:
-                        print(f"File {file_path} hash mismatch. Waiting for re-transmission.")
-                        os.remove(file_path)
-                        os.remove(bit_array_path)
+                logger.info(f"{file_path} file downloading finished")
+                set_file_as_completed(offset + file_extension)
         else:
-            print(f"Chunk {chunk_index} already received, ignoring...")
+            logger.info(f"Chunk {chunk_index} already received, ignoring...File: {offset}")
 
 
 def bytes_2_int(data):
-    if isinstance(data, int):
+    if isinstance(data, bytes):
         return int.from_bytes(data, byteorder='little')
 
 
 def unpack(packet: bytes):
     start_index = 0
     ip_b = packet[start_index:IP_LENGTH]
-    ip = socket.inet_ntoa(ip_b)
+    ip = socket.inet_ntoa(b'\xc0\xa8' + ip_b)
 
     start_index += IP_LENGTH
-    offset_b = packet[start_index: OFFSET_LENGTH]
+    offset_b = packet[start_index: start_index + OFFSET_LENGTH]
     offset = bytes_2_int(offset_b)
 
     start_index += OFFSET_LENGTH
-    file_type_b = packet[start_index: FILE_TYPE_LENGTH]
+    file_type_b = packet[start_index: start_index + FILE_TYPE_LENGTH]
     file_type = bytes_2_int(file_type_b)
 
     start_index += FILE_TYPE_LENGTH
-    total_chunks_b = packet[start_index: TOTAL_CHUNKS_LENGTH]
+    total_chunks_b = packet[start_index: start_index + TOTAL_CHUNKS_LENGTH]
     total_chunks = bytes_2_int(total_chunks_b)
 
     start_index += TOTAL_CHUNKS_LENGTH
-    chunk_index_b = packet[start_index: CHUNK_INDEX_LENGTH]
+    chunk_index_b = packet[start_index: start_index + CHUNK_INDEX_LENGTH]
     chunk_index = bytes_2_int(chunk_index_b)
 
     start_index += CHUNK_INDEX_LENGTH
-    chunk_hash = packet[start_index: HASH_LENGTH]
+    chunk_hash = packet[start_index: start_index + HASH_LENGTH]
 
     start_index += HASH_LENGTH
-    chunk_data = packet[start_index: CHUNK_SIZE]
+    chunk_data = packet[start_index: start_index + CHUNK_SIZE]
 
     return ip, offset, file_type, total_chunks, chunk_index, chunk_hash, chunk_data
 
 
 def handle_client_connection(client_socket):
     while True:
-        packet = client_socket.recv(PACKET_SIZE)
+        try:
+            packet = client_socket.recv(PACKET_SIZE)
+        except ConnectionResetError:
+            logger.warning(f"Connection was closed by client:{client_socket}")
+            client_socket.close()
+            return
         if not packet:
             break
         ip, offset, file_type, total_chunks, chunk_index, chunk_hash, chunk_data = unpack(packet)
@@ -122,20 +150,21 @@ def handle_client_connection(client_socket):
         if file_type not in FILE_EXTENSIONS:
             logger.error(f"There is no such file extension: {file_type}. Chunk index: {chunk_index}")
             continue
-        if ip not in TARGETS:
+        # compare last 2 ip address
+        if ip[ip.find('.', 4) + 1:] not in TARGETS:
             logger.error(f"No such ip address. IP: {ip}")
             continue
 
-        now = datetime.utcnow()
-        time_10m_before = now - timedelta(minutes=TIME_THRESHOLD)
-        if not (time_10m_before < offset < now):
+        now = datetime.utcnow().timestamp()
+        time_10m_before = now - TIME_THRESHOLD * 3600
+        if time_10m_before < offset or offset > now:
             logger.error(f"Invalid offset. Offset{offset}")
             continue
         if chunk_index >= total_chunks:
             logger.error("Chunk_index can not be larger then total_indeks")
             continue
 
-        handle_payload(ip, offset, file_type, total_chunks, chunk_index, chunk_hash, chunk_data, packet)
+        handle_payload(ip, offset, file_type, total_chunks, chunk_index, chunk_data)
 
     client_socket.close()
 
@@ -154,14 +183,16 @@ def start_server(server_ip, server_port):
 
 
 def get_config():
-    with open('sync_server/config.json', 'r') as file:
+    with open('../sync_server/config.json', 'r') as file:
         return json.load(file)
 
 
 if __name__ == "__main__":
-
     config = get_config()
     TIME_THRESHOLD = config['TIME_THRESHOLD']
     # get all ip address
-    TARGETS = [ip[0] for ip in config['VM_LIST'].values()]
+    TARGETS = [ip[0][ip[0].find('.', 4) + 1:] for ip in config['VM_LIST'].values()]
     start_server('127.0.0.1', 12345)
+
+
+

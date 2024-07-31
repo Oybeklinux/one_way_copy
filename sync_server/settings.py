@@ -1,4 +1,4 @@
-from constants import STATE_FILE
+from sync_server.constants import STATE_FILE
 import json
 
 

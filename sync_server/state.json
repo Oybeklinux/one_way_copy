@@ -1,8 +1,6 @@
 {
-    "send_files": [
-        "2024-07-29-14-26-13.pdf"
-    ],
-    "TOKEN_STATUS": 1,
+    "send_files": [],
+    "TOKEN_STATUS": 2,
     "VMLIST": {
         "VM2": {
             "files": 3,

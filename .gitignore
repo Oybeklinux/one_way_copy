@@ -5,7 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
-
+diod server/resource
+mnt
+sync_server/uploads
 # Distribution / packaging
 .Python
 build/

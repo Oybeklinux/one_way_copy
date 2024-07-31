@@ -1,15 +1,40 @@
-from datetime import datetime
 import json
+import os.path
+from datetime import datetime
 
 
-def get_config():
-    with open('config.json', 'r') as file:
-        return json.load(file)
+def create_abs_path(file_name):
+    current_file_path = os.path.abspath(__file__)
+    current_dir_path = os.path.dirname(current_file_path)
+    return os.path.join(current_dir_path, file_name)
 
 
-def get_settings():
-    with open('state.json', 'r') as file:
-        return json.load(file)
+def get_config(key=None):
+    path = create_abs_path('config.json')
+
+    with open(path, 'r') as file:
+        obj = json.load(file)
+        if not key:
+            return obj
+        else:
+            try:
+                return obj[key]
+            except KeyError:
+                return None
+
+
+def get_settings(key=None):
+    path = create_abs_path('state.json')
+    with open(path, 'r') as file:
+        obj = json.load(file)
+        if not key:
+            return obj
+        else:
+            try:
+                return obj[key]
+            except KeyError:
+                return None
+
 
 
 config = get_config()
