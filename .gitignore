@@ -8,6 +8,7 @@ __pycache__/
 diod server/resource
 mnt
 sync_server/uploads
+diod server/complted_files.txt
 # Distribution / packaging
 .Python
 build/

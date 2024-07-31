@@ -1,0 +1,3 @@
+
+===== One way copy 1.0.0 31.07.2024 =====
++ Sync serverdan diod serverga fayllar ko'chiriladigan qilindi
